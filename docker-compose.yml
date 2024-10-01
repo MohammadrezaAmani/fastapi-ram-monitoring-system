@@ -8,7 +8,7 @@ services:
     volumes:
       - .:/app
     environment:
-      - DATABASE_URL=sqlite:///./test_db.db  # Adjust if needed
+      - DATABASE_URL=sqlite:///./test_db.db
     depends_on:
       - db
 
