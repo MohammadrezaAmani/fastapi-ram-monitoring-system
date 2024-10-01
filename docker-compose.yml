@@ -5,19 +5,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: monitor_app
     volumes:
       - .:/app
+    command: ["pytest", "test/", "--asyncio-mode=auto", "--disable-warnings", "-v"]
     environment:
       - DATABASE_URL=sqlite:///./test_db.db
     depends_on:
-      - db
-
-  db:
-    image: nouchka/sqlite3:latest
-    volumes:
-      - db_data:/test
+      - pre-commit
     ports:
-      - "8080:8080"
+      - "8000:8000"
 
-volumes:
-  db_data:
+  pre-commit:
+    image: python:3.11-slim
+    container_name: pre_commit
+    volumes:
+      - .:/app
+    working_dir: /app
+    entrypoint: ["pre-commit", "run", "--all-files"]
