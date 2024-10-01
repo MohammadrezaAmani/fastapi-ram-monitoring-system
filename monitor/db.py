@@ -7,8 +7,14 @@ from databases.interfaces import Record
 from monitor.conf import DATABASE_URL, TABLE_NAME
 from monitor.enums import Device, Ram, Sort, safe
 
+database = Database(DATABASE_URL)
 
-async def create_table():
+
+def get_db():
+    return database
+
+
+async def create_table(db: Database):
     query = f"""CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                 {Ram.id} INTEGER PRIMARY KEY AUTOINCREMENT, 
                 {Ram.total_mb} INTEGER, 
@@ -16,10 +22,11 @@ async def create_table():
                 {Ram.device} INTEGER,
                 {Ram.timestamp} DATETIME DEFAULT CURRENT_TIMESTAMP)
             """
-    await get_db().execute(query=query)
+    await db.execute(query=query)
 
 
 async def add_ram_data_to_db(
+    db: Database,
     total_mb: int,
     free_mb: int,
     timestamp: Optional[datetime] = None,
@@ -46,10 +53,11 @@ async def add_ram_data_to_db(
         Ram.timestamp: timestamp,
         Ram.device: device,
     }
-    await get_db().execute(query=query, values=values)
+    await db.execute(query=query, values=values)
 
 
-async def get_last_n_data_from_datebase(
+async def get_last_n_data_from_database(
+    db: Database,
     n: int,
     fields: List[str] = safe(Ram),
     order_by: str = Ram.timestamp,
@@ -57,9 +65,6 @@ async def get_last_n_data_from_datebase(
     start_time: datetime | None = None,
     end_time: datetime | None = None,
 ) -> List[Record]:
-    for i in fields:
-        if i not in safe(Ram):
-            raise
     fields_str = ", ".join(fields)
     time_limit_query, values = time_limit(start_time, end_time)
     query = f"""SELECT {fields_str} FROM {TABLE_NAME}
@@ -67,20 +72,22 @@ async def get_last_n_data_from_datebase(
                 ORDER BY {order_by} {order} LIMIT :n
             """
     values["n"] = n
-    return await get_db().fetch_all(query=query, values=values)
+    return await db.fetch_all(query=query, values=values)
 
 
 async def count_ram_data(
+    db: Database,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
 ) -> int:
     time_limit_query, values = time_limit(start_time, end_time)
     query = f"SELECT COUNT(*) FROM {TABLE_NAME} {time_limit_query}"
-    result = await get_db().fetch_one(query=query, values=values)
+    result = await db.fetch_one(query=query, values=values)
     return result[0] if result else 0
 
 
 async def get_average_ram(
+    db: Database,
     field: str,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
@@ -89,7 +96,7 @@ async def get_average_ram(
         raise ValueError(f"Invalid field for average calculation: {field}")
     time_limit_query, values = time_limit(start_time, end_time)
     query = f"SELECT AVG({field}) FROM {TABLE_NAME} {time_limit_query}"
-    result = await get_db().fetch_one(query=query, values=values)
+    result = await db.fetch_one(query=query, values=values)
     return result[0] if result else 0.0
 
 
@@ -112,10 +119,3 @@ def time_limit(
             )
         )
     )
-
-
-database = Database(DATABASE_URL)
-
-
-def get_db() -> Database:
-    return database

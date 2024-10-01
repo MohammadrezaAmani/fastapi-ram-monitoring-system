@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import Optional
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, Field, computed_field
 
 
 class RamMonitorIn(BaseModel):
     total_mb: int
     free_mb: int
-    timestamp: Optional[datetime] = None
+    timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class RamMonitorOut(RamMonitorIn):
